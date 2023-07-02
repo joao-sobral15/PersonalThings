@@ -1,0 +1,52 @@
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const { mongo } = require('mongoclient/config');
+
+mongoose.connect('mongodb+srv://jsobral:Ac2v0iR3S7Mts4Sn@mypasswords.fxkdtvk.mongodb.net/?retryWrites=true&w=majority', { useNewUrlParser: true, useUnifiedTopology: true });
+
+const userSchema = new mongoose.Schema
+({
+    name: {type:String, required:true},
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+}, { timestamps: true });
+
+
+userSchema.pre('save', async function (next) {
+    const user = this;
+  
+    if (!user.isModified('password')) {
+      return next();
+    }
+  
+    try {
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(user.password, salt);
+      user.password = hash;
+      next();
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  userSchema.methods.comparePassword = async function (password) {
+    try {
+      return await bcrypt.compare(password, this.password);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+
+  const PassworsUsersSchema = new mongoose.Schema({
+    idUser:{type:mongoose.Schema.Types.ObjectId,ref:'User' },
+    app: { type: String },
+    password: { type: String, required: true },
+  }, { timestamps: true })
+
+  const User  = mongoose.model('User', userSchema);
+  const PassworsUsers = mongoose.model('PasswordUsers',PassworsUsersSchema);
+
+
+
+  module.exports ={User,PassworsUsers};
