@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build/
+config/local.js
+config/local.json
+logs/
+*.log
