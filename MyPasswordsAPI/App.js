@@ -83,6 +83,7 @@ app.get('/users', (req, res) => {
       res.status(200).json(users);
     })
     .catch((error) => {
+      console.log(error);
       // Ocorreu um erro ao buscar os usuários
       res.status(500).json({ error: 'Erro ao buscar usuários' });
     });
@@ -100,6 +101,7 @@ app.get('/users/:id', (req, res) => {
       res.status(200).json(user);
     })
     .catch((error) => {
+      console.log(error);
       res.status(500).json({ error: 'Erro ao buscar usuário' });
     });
 });
