@@ -89,7 +89,7 @@ app.post('/register', async (req, res) => {
     // Gerar um token JWT
     const token = generateToken(newUser._id);
 
-    res.status(201).json({token});
+    res.status(201).json({user: user._id, token: token });
   } catch (error) {
     console.error('Erro ao registrar usuário', error);
     res.status(500).json({ error: 'Erro ao registrar usuário' });
@@ -113,13 +113,13 @@ app.post('/login', async (req, res) => {
     // Verificar a senha
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+      return res.status(401).json({ error: 'Credenciais inválidas',  });
     }
 
     // Gerar um JWT (JSON Web Token)
     const token = jwt.sign({ userId: user._id }, secretKey, { expiresIn: '1h' });
 
-    res.json({ token });
+    res.json({user: user._id, token: token });
   } catch (error) {
     console.error('Erro ao fazer login', error);
     res.status(500).json({ error: 'Erro ao fazer login' });
