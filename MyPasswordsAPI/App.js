@@ -9,6 +9,8 @@ const { mongo, Mongoose } = require('mongoose');
 require('dotenv').config();
 const uri = process.env.CONN_STRING;
 const secretKey = Buffer.from(process.env.SECRET_KEY, 'hex');
+const jwt = require('jsonwebtoken');
+
 
 const iv = Buffer.from(process.env.IV, 'hex');
 const client = new MongoClient(uri, {
@@ -35,6 +37,94 @@ function encryptPassword(password) {
   encrypted += cipher.final('hex');
   return encrypted;
 }
+function generateToken(userId) {
+  const token = jwt.sign({ userId }, secretKey, { expiresIn: '1h' });
+  return token;
+}
+
+function authenticateToken(req, res, next) {
+  const token = req.headers['authorization'];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autenticação não fornecido' });
+  }
+
+  jwt.verify(token, secretKey, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: 'Token de autenticação inválido' });
+    }
+
+    req.userId = decoded.userId;
+    next();
+  });
+}
+
+app.post('/register', async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Todos os campos devem ser preenchidos' });
+  }
+
+  try {
+    // Verificar se o usuário já está registrado
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email já está sendo usado' });
+    }
+
+    // Encriptar a senha
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Criar um novo usuário
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword
+    });
+
+    await newUser.save();
+
+    // Gerar um token JWT
+    const token = generateToken(newUser._id);
+
+    res.status(201).json({token});
+  } catch (error) {
+    console.error('Erro ao registrar usuário', error);
+    res.status(500).json({ error: 'Erro ao registrar usuário' });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Todos os campos devem ser preenchidos' });
+  }
+
+  try {
+    // Verificar se o usuário existe
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    // Verificar a senha
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    // Gerar um JWT (JSON Web Token)
+    const token = jwt.sign({ userId: user._id }, secretKey, { expiresIn: '1h' });
+
+    res.json({ token });
+  } catch (error) {
+    console.error('Erro ao fazer login', error);
+    res.status(500).json({ error: 'Erro ao fazer login' });
+  }
+});
 
 // Função para descriptografar a senha
 function decryptPassword(encryptedPassword, secretKey, iv) {
@@ -45,36 +135,6 @@ function decryptPassword(encryptedPassword, secretKey, iv) {
 }
 //Criação de um novo utilizador -- 
 
-app.post('/NewUser', (req, res) => {
-  const { name, email, password } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Todos os campos devem ser preenchidos' });
-  }
-
-  // Encripta a senha
-  bcrypt.genSalt(10, (err, salt) => {
-    bcrypt.hash(password, salt, (err, hash) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erro ao encriptar a senha' });
-      }
-
-      const newUser = new User({
-        name,
-        email,
-        password: hash, // Armazena a senha encriptada
-      });
-
-      newUser.save()
-        .then((user) => {
-          res.status(201).json(user);
-        })
-        .catch((error) => {
-          res.status(500).json({ error: 'Erro ao criar usuário', error });
-        });
-    });
-  });
-});
 
 app.get('/users', (req, res) => {
   User.find()
