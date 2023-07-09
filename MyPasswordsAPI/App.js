@@ -89,7 +89,7 @@ app.post('/register', async (req, res) => {
     // Gerar um token JWT
     const token = generateToken(newUser._id);
 
-    res.status(201).json({user: user._id, token: token });
+    res.status(201).json({user: newUser._id, token: token });
   } catch (error) {
     console.error('Erro ao registrar usuário', error);
     res.status(500).json({ error: 'Erro ao registrar usuário' });
